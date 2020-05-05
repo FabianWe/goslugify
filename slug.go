@@ -99,6 +99,10 @@ func (normalizer UTF8Normalizer) Modify(in string) string {
 
 type RuneHandleFunc func(r rune) (handles bool, to string)
 
+func KeepAllFunc(r rune) (bool, string) {
+	return true, string(r)
+}
+
 func NewRuneHandleFuncFromMap(m map[rune]string) RuneHandleFunc {
 	return func(r rune) (bool, string) {
 		res, has := m[r]
@@ -177,25 +181,30 @@ func NewReplaceMultiOccurrencesFunc(in rune) StringModifierFunc {
 	}
 }
 
+// TODO broken
 func NewTruncateFunc(maxLength int, wordSep string) StringModifierFunc {
 	return func(in string) string {
 		if maxLength < 0 {
 			return in
 		}
-		split := strings.Split(in, wordSep)
-		if len(split) == 0 {
+		if in == "" {
 			return in
 		}
+		split := strings.Split(in, wordSep)
+		//for _, bla := range split {
+		//	fmt.Printf("\"%s\"\n", bla)
+		//}
+		//fmt.Println("joined:", strings.Join(split, wordSep))
 		firstRunes := []rune(split[0])
 		// if first word is already too long truncate it
-		if len(firstRunes) > maxLength {
+		if len(firstRunes) >= maxLength {
 			return string(firstRunes[:maxLength])
 		}
 		// append words while length is still valid
 		sepLen := utf8.RuneCountInString(wordSep)
 		var buf strings.Builder
 		buf.WriteString(split[0])
-		currentLen := utf8.RuneCountInString(split[0])
+		currentLen := len(firstRunes)
 		for _, word := range split[1:] {
 			nextLen := currentLen + sepLen + utf8.RuneCountInString(word)
 			if nextLen > maxLength {
@@ -203,8 +212,15 @@ func NewTruncateFunc(maxLength int, wordSep string) StringModifierFunc {
 			}
 			buf.WriteString(wordSep)
 			buf.WriteString(word)
+			currentLen = nextLen
 		}
 		return buf.String()
+	}
+}
+
+func NewTrimFunc(cutset string) StringModifierFunc {
+	return func(in string) string {
+		return strings.Trim(in, cutset)
 	}
 }
 
@@ -233,6 +249,7 @@ func GetDefaultProcessors() []StringModifierFunc {
 func GetDefaultFinalizers() []StringModifierFunc {
 	return []StringModifierFunc{
 		NewReplaceMultiOccurrencesFunc('-'),
+		NewTrimFunc("-"),
 	}
 }
 
@@ -306,3 +323,4 @@ func GenerateSlug(in string) string {
 // TODO is valid function
 
 // TODO should not be modified
+// customize: -, multiple maps, truncate length
