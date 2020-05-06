@@ -326,6 +326,8 @@ func NewReplaceMultiOccurrencesFunc(in rune) StringModifierFunc {
 // As a special case the first word as defined by wordSep might be truncated in the word if it
 // already is too long.
 //
+// maxLength meassures the number of runes in the string, not the number of bytes.
+//
 // Note: If the string starts with wordSep so may the result, so you might want to trim time string,
 // either before or after.
 // Also wordSep should not have multiple occurrences, otherwise the result can be a bit "strange".
