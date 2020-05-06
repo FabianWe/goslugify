@@ -273,10 +273,10 @@ func NewTrimFunc(cutset string) StringModifierFunc {
 // finalize, remove multiple slashes, truncate
 
 func GetDefaultPreProcessors() []StringModifierFunc {
-	return getDefaultPreProcessorsWithForm(norm.NFKC)
+	return getDefaultPreProcessorsWithForm(norm.NFKC, true)
 }
 
-func getDefaultPreProcessorsWithForm(form norm.Form) []StringModifierFunc {
+func getDefaultPreProcessorsWithForm(form norm.Form, toLower bool) []StringModifierFunc {
 	res := []StringModifierFunc{
 		IgnoreInvalidUTF8,
 	}
@@ -284,7 +284,10 @@ func getDefaultPreProcessorsWithForm(form norm.Form) []StringModifierFunc {
 	case norm.NFC, norm.NFD, norm.NFKC, norm.NFKD:
 		res = append(res, ToStringHandleFunc(NewUTF8Normalizer(form)))
 	}
-	res = append(res, strings.ToLower)
+	if toLower {
+		res = append(res, strings.ToLower)
+	}
+
 	return res
 }
 
@@ -354,32 +357,6 @@ func NewDefaultSlugGenerator() *SlugGenerator {
 	}
 }
 
-// TODO should we do it this way? shouldn't we more like just replace complete words?
-// 	not every occurrence of this?
-func NewSlugGeneratorWithConfig(truncateLength int, wordSeparator rune, form norm.Form, replacerMaps ...StringReplaceMap) *SlugGenerator {
-	pre := getDefaultPreProcessorsWithForm(form)
-
-	// first merge all maps into one
-	replaceMap := MergeStringReplaceMaps(replacerMaps...)
-	// if there is at least one entry we create a replacer and pass it in getDefaultProcessorsWithConfig
-	var processors []StringModifierFunc
-	if len(replaceMap) > 0 {
-		// TODO word or not word??
-		constReplacer := NewConstantReplacerFromMap(replaceMap)
-		processors = getDefaultProcessorsWithConfig(string(wordSeparator), ToStringHandleFunc(constReplacer))
-	} else {
-		processors = getDefaultProcessorsWithConfig(string(wordSeparator))
-	}
-
-	finalizers := getDefaultFinalizersWithConfig(wordSeparator, truncateLength)
-
-	return &SlugGenerator{
-		PreProcessor: ChainStringModifierFuncs(pre...),
-		Processor:    ChainStringModifierFuncs(processors...),
-		Finalizer:    ChainStringModifierFuncs(finalizers...),
-	}
-}
-
 func (gen *SlugGenerator) WithPreProcessor(modifier StringModifierFunc) *SlugGenerator {
 	return &SlugGenerator{
 		PreProcessor: ChainStringModifierFuncs(modifier, gen.PreProcessor),
@@ -410,7 +387,52 @@ func GenerateSlug(in string) string {
 	return defaultGenerator.GenerateSlug(in)
 }
 
-// TODO is valid function
+type SlugConfig struct {
+	TruncateLength int
+	WordSeparator  rune
+	Form           norm.Form
+	ReplaceMaps    []StringReplaceMap
+	ToLower        bool
+}
+
+func NewSlugConfig() *SlugConfig {
+	return &SlugConfig{
+		TruncateLength: -1,
+		WordSeparator:  '-',
+		Form:           norm.NFKC,
+		ReplaceMaps:    nil,
+		ToLower:        true,
+	}
+}
+
+func (config *SlugConfig) Configure() *SlugGenerator {
+	pre := getDefaultPreProcessorsWithForm(config.Form, config.ToLower)
+
+	// first merge all maps into one
+	replaceMap := MergeStringReplaceMaps(config.ReplaceMaps...)
+	// if there is at least one entry we create a replacer and pass it in getDefaultProcessorsWithConfig
+	// this replacer will substitute all occurrences, not just whole words
+	var processors []StringModifierFunc
+	if len(replaceMap) > 0 {
+		constReplacer := NewConstantReplacerFromMap(replaceMap)
+		processors = getDefaultProcessorsWithConfig(string(config.WordSeparator), ToStringHandleFunc(constReplacer))
+	} else {
+		processors = getDefaultProcessorsWithConfig(string(config.WordSeparator))
+	}
+
+	finalizers := getDefaultFinalizersWithConfig(config.WordSeparator, config.TruncateLength)
+
+	return &SlugGenerator{
+		PreProcessor: ChainStringModifierFuncs(pre...),
+		Processor:    ChainStringModifierFuncs(processors...),
+		Finalizer:    ChainStringModifierFuncs(finalizers...),
+	}
+}
+
+// TODO is valid function?
+// should be... making this a method of SlugGenerator would be a bit hard...
 
 // TODO should not be modified
 // customize: -, multiple maps, truncate length
+// add lower case bool option
+// add a config type with a to... method?
