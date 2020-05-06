@@ -220,6 +220,23 @@ func KeepAllFunc(r rune) (bool, string) {
 	return true, string(r)
 }
 
+// TranslateUmlaut translates to umlaut symbols (ö, ä, ü) as well as ß to a string without the umlaut,
+// for example 'ö' --> "oe", 'ß' --> "ss".
+func TranslateUmlaut(r rune) (bool, string) {
+	switch r {
+	case 'Ö', 'ö':
+		return true, "oe"
+	case 'Ä', 'ä':
+		return true, "ae"
+	case 'Ü', 'ü':
+		return true, "ue"
+	case 'ß', 'ẞ':
+		return true, "ss"
+	default:
+		return false, ""
+	}
+}
+
 // NewRuneHandleFuncFromMap performs a replace of a single rune given a pre-defined set of
 // replacements.
 // This function will return (true, m[r]) for all entries in m.
