@@ -19,6 +19,23 @@ import (
 	"github.com/FabianWe/goslugify"
 )
 
+func ExampleMergeStringReplaceMaps() {
+	m1 := map[string]string{
+		"a": "b",
+	}
+	// the 'a' in this mapping will be ignored (because it exists already in m1)
+	// 'a' will be replaced by "b", even though m2 maps 'b' --> "c"
+	m2 := map[string]string{
+		"a": "fooo",
+		"b": "c",
+		"c": "d",
+	}
+	combined := goslugify.MergeStringReplaceMaps(m1, m2)
+	modifier := goslugify.NewConstantReplacerFromMap(combined)
+	fmt.Println(modifier.Modify("abcde"))
+	// Output: bcdde
+}
+
 func ExampleConstantReplacer() {
 	replacer := goslugify.NewConstantReplacer("foo", "bar")
 	fmt.Println(replacer.Modify("hello foo bar"))
@@ -46,6 +63,7 @@ func ExampleNewRuneHandleFuncFromMap() {
 		'€': "euro",
 		'$': "dollar",
 	})
+	// without KeepAllFunc every codepoint except € and $ would be dropped
 	funcs := goslugify.ChainRuneHandleFuncs(f, goslugify.KeepAllFunc)
 	modifier := goslugify.RuneHandleFuncToStringModifierFunc(funcs)
 	fmt.Println(modifier("The USA use $ and Germany uses €"))
