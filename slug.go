@@ -365,6 +365,7 @@ func NewTruncateFunc(maxLength int, wordSep string) StringModifierFunc {
 
 // NewTrimFunc returns a new StringModifierFunc that removes all leading and trailing
 // occurrences of cutset from a string.
+// To be more explicit: Each codepoint in cutset will be removed, see strings.Trim.
 // For example "--foo--" will be transformed to "foo".
 func NewTrimFunc(cutset string) StringModifierFunc {
 	return func(in string) string {
