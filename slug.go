@@ -224,11 +224,17 @@ func KeepAllFunc(r rune) (bool, string) {
 // for example 'ö' --> "oe", 'ß' --> "ss".
 func TranslateUmlaut(r rune) (bool, string) {
 	switch r {
-	case 'Ö', 'ö':
+	case 'Ö':
+		return true, "Oe"
+	case 'ö':
 		return true, "oe"
-	case 'Ä', 'ä':
+	case 'Ä':
+		return true, "Ae"
+	case 'ä':
 		return true, "ae"
-	case 'Ü', 'ü':
+	case 'Ü':
+		return true, "Ue"
+	case 'ü':
 		return true, "ue"
 	case 'ß', 'ẞ':
 		return true, "ss"

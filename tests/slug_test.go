@@ -283,8 +283,8 @@ func TestValidateNoBounds(t *testing.T) {
 	config := goslugify.NewSlugConfig()
 	validator := config.GetValidator()
 
-	tests := []struct{
-		in string
+	tests := []struct {
+		in       string
 		expected bool
 	}{
 		{"foo", true},
@@ -315,8 +315,8 @@ func TestValidateWithBounds(t *testing.T) {
 	config.TruncateLength = 5
 	config.WordSeparator = '_'
 	validator := config.GetValidator()
-	tests := []struct{
-		in string
+	tests := []struct {
+		in       string
 		expected bool
 	}{
 		{"foo_", false},
@@ -343,8 +343,8 @@ func TestValidateWithoutLower(t *testing.T) {
 	config.ToLower = false
 	validator := config.GetValidator()
 
-	tests := []struct{
-		in string
+	tests := []struct {
+		in       string
 		expected bool
 	}{
 		{"foo-bar", true},
@@ -358,5 +358,16 @@ func TestValidateWithoutLower(t *testing.T) {
 			t.Errorf("expected validate(\"%s\") to be %s, but got %s",
 				tc.in, strconv.FormatBool(tc.expected), strconv.FormatBool(got))
 		}
+	}
+}
+
+func TestTranslateUmlaut(t *testing.T) {
+	modifier := goslugify.RuneHandleFuncToStringModifierFunc(goslugify.TranslateUmlaut)
+	in := "abcd123öäüÖÄÜßẞ"
+	expected := "oeaeueOeAeUessss"
+	got := modifier(in)
+	if got != expected {
+		t.Errorf("expected TranslateUmlaut(\"%s\") to be \"%s\", but got \"%s\"",
+			in, expected, got)
 	}
 }
