@@ -381,7 +381,8 @@ func (gen *SlugGenerator) WithFinalizer(modifier StringModifierFunc) *SlugGenera
 	}
 }
 
-var defaultGenerator = NewDefaultSlugGenerator()
+var defaultConfig = NewSlugConfig()
+var defaultGenerator = defaultConfig.Configure()
 
 func GenerateSlug(in string) string {
 	return defaultGenerator.GenerateSlug(in)
