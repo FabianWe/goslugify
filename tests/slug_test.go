@@ -51,6 +51,34 @@ func TestConstantReplacer(t *testing.T) {
 	}
 }
 
+func TestWordReplacer(t *testing.T) {
+	replacer := goslugify.NewWordReplacer(map[string]string{
+		"@":   "at",
+		"foo": "bar",
+		"&":   "and",
+	}, "-")
+	tests := []struct {
+		in       string
+		expected string
+	}{
+		{"", ""},
+		{" @", " @"},
+		{"@", "at"},
+		{"-", "-"},
+		{"foo", "bar"},
+		{"hello-@-world", "hello-at-world"},
+		{"there-&-back-again", "there-and-back-again"},
+		{"foo-&-bar-@-go", "bar-and-bar-at-go"},
+	}
+	for _, tc := range tests {
+		got := replacer.Modify(tc.in)
+		if got != tc.expected {
+			t.Errorf("expected replacement of \"%s\" to be \"%s\" but got \"%s\"",
+				tc.in, tc.expected, got)
+		}
+	}
+}
+
 func TestIgnoreInvalidUTF8(t *testing.T) {
 	invalidBytes := []byte{0xff, 0xfe, 0xfd}
 	invalidString := string(invalidBytes)
@@ -102,7 +130,7 @@ func TestSpaceReplacerFunc(t *testing.T) {
 	}
 }
 
-func ValidSlugRuneReplaceFunc(t *testing.T) {
+func TestValidSlugRuneReplaceFunc(t *testing.T) {
 	tests := []struct {
 		in             rune
 		expectedBool   bool
@@ -111,7 +139,7 @@ func ValidSlugRuneReplaceFunc(t *testing.T) {
 		{'A', true, "A"},
 		{'H', true, "H"},
 		{'c', true, "c"},
-		{'z', true, "Z"},
+		{'z', true, "z"},
 		{'4', true, "4"},
 		{'-', true, "-"},
 		{'_', true, "_"},

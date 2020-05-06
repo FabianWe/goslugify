@@ -22,6 +22,20 @@ import (
 	"unicode/utf8"
 )
 
+type StringReplaceMap map[string]string
+
+func MergeStringReplaceMaps(maps ...StringReplaceMap) StringReplaceMap {
+	res := make(StringReplaceMap)
+	for _, m := range maps {
+		for key, value := range m {
+			if _, has := res[key]; !has {
+				res[key] = value
+			}
+		}
+	}
+	return res
+}
+
 type StringModifierFunc func(in string) string
 
 func ChainStringModifierFuncs(funcs ...StringModifierFunc) StringModifierFunc {
@@ -58,7 +72,7 @@ func NewConstantReplacer(oldnew ...string) *ConstantReplacer {
 	}
 }
 
-func NewConstantReplacerFromMap(m map[string]string) *ConstantReplacer {
+func NewConstantReplacerFromMap(m StringReplaceMap) *ConstantReplacer {
 	oldnew := make([]string, 2*len(m))
 	i := 0
 	for key, value := range m {
@@ -74,6 +88,37 @@ func (replacer *ConstantReplacer) Modify(in string) string {
 		replacer.replacer = strings.NewReplacer(replacer.OldNew...)
 	})
 	return replacer.replacer.Replace(in)
+}
+
+type WordReplacer struct {
+	WordMap       StringReplaceMap
+	WordSeparator string
+}
+
+func NewWordReplacer(wordMap StringReplaceMap, wordSeparator string) *WordReplacer {
+	return &WordReplacer{
+		WordMap:       wordMap,
+		WordSeparator: wordSeparator,
+	}
+}
+
+func (replacer *WordReplacer) Modify(in string) string {
+	words := strings.Split(in, replacer.WordSeparator)
+	first := true
+	var buf strings.Builder
+	for _, word := range words {
+		replaceBy := word
+		if entry, has := replacer.WordMap[word]; has {
+			replaceBy = entry
+		}
+		if first {
+			first = false
+		} else {
+			buf.WriteString(replacer.WordSeparator)
+		}
+		buf.WriteString(replaceBy)
+	}
+	return buf.String()
 }
 
 func IgnoreInvalidUTF8(in string) string {
@@ -181,7 +226,6 @@ func NewReplaceMultiOccurrencesFunc(in rune) StringModifierFunc {
 	}
 }
 
-// TODO broken
 func NewTruncateFunc(maxLength int, wordSep string) StringModifierFunc {
 	return func(in string) string {
 		if maxLength < 0 {
@@ -229,28 +273,52 @@ func NewTrimFunc(cutset string) StringModifierFunc {
 // finalize, remove multiple slashes, truncate
 
 func GetDefaultPreProcessors() []StringModifierFunc {
-	return []StringModifierFunc{
+	return getDefaultPreProcessorsWithForm(norm.NFKC)
+}
+
+func getDefaultPreProcessorsWithForm(form norm.Form) []StringModifierFunc {
+	res := []StringModifierFunc{
 		IgnoreInvalidUTF8,
-		strings.ToLower,
-		ToStringHandleFunc(NewUTF8Normalizer(norm.NFKC)),
 	}
+	switch form {
+	case norm.NFC, norm.NFD, norm.NFKC, norm.NFKD:
+		res = append(res, ToStringHandleFunc(NewUTF8Normalizer(form)))
+	}
+	res = append(res, strings.ToLower)
+	return res
+}
+
+func getDefaultProcessorsWithConfig(replaceBy string, firstActions ...StringModifierFunc) []StringModifierFunc {
+	res := make([]StringModifierFunc, len(firstActions), len(firstActions)+1)
+	copy(res, firstActions)
+
+	defaultFunc := RuneHandleFuncToStringModifierFunc(ChainRuneHandleFuncs(
+		NewSpaceReplacerFunc(replaceBy),
+		ReplaceDashAndHyphens,
+		ValidSlugRuneReplaceFunc,
+	))
+
+	res = append(res, defaultFunc)
+	return res
 }
 
 func GetDefaultProcessors() []StringModifierFunc {
-	return []StringModifierFunc{
-		RuneHandleFuncToStringModifierFunc(ChainRuneHandleFuncs(
-			NewSpaceReplacerFunc("-"),
-			ReplaceDashAndHyphens,
-			ValidSlugRuneReplaceFunc,
-		)),
+	return getDefaultProcessorsWithConfig("-")
+}
+
+func getDefaultFinalizersWithConfig(replaceBy rune, truncateLength int) []StringModifierFunc {
+	res := []StringModifierFunc{
+		NewReplaceMultiOccurrencesFunc(replaceBy),
+		NewTrimFunc(string(replaceBy)),
 	}
+	if truncateLength >= 0 {
+		res = append(res, NewTruncateFunc(truncateLength, string(replaceBy)))
+	}
+	return res
 }
 
 func GetDefaultFinalizers() []StringModifierFunc {
-	return []StringModifierFunc{
-		NewReplaceMultiOccurrencesFunc('-'),
-		NewTrimFunc("-"),
-	}
+	return getDefaultFinalizersWithConfig('-', -1)
 }
 
 type SlugGenerator struct {
@@ -270,7 +338,7 @@ func (gen *SlugGenerator) Modify(in string) string {
 	return gen.GenerateSlug(in)
 }
 
-func NewSlugGenerator() *SlugGenerator {
+func NewEmptySlugGenerator() *SlugGenerator {
 	return &SlugGenerator{
 		PreProcessor: nil,
 		Processor:    nil,
@@ -283,6 +351,32 @@ func NewDefaultSlugGenerator() *SlugGenerator {
 		PreProcessor: ChainStringModifierFuncs(GetDefaultPreProcessors()...),
 		Processor:    ChainStringModifierFuncs(GetDefaultProcessors()...),
 		Finalizer:    ChainStringModifierFuncs(GetDefaultFinalizers()...),
+	}
+}
+
+// TODO should we do it this way? shouldn't we more like just replace complete words?
+// 	not every occurrence of this?
+func NewSlugGeneratorWithConfig(truncateLength int, wordSeparator rune, form norm.Form, replacerMaps ...StringReplaceMap) *SlugGenerator {
+	pre := getDefaultPreProcessorsWithForm(form)
+
+	// first merge all maps into one
+	replaceMap := MergeStringReplaceMaps(replacerMaps...)
+	// if there is at least one entry we create a replacer and pass it in getDefaultProcessorsWithConfig
+	var processors []StringModifierFunc
+	if len(replaceMap) > 0 {
+		// TODO word or not word??
+		constReplacer := NewConstantReplacerFromMap(replaceMap)
+		processors = getDefaultProcessorsWithConfig(string(wordSeparator), ToStringHandleFunc(constReplacer))
+	} else {
+		processors = getDefaultProcessorsWithConfig(string(wordSeparator))
+	}
+
+	finalizers := getDefaultFinalizersWithConfig(wordSeparator, truncateLength)
+
+	return &SlugGenerator{
+		PreProcessor: ChainStringModifierFuncs(pre...),
+		Processor:    ChainStringModifierFuncs(processors...),
+		Finalizer:    ChainStringModifierFuncs(finalizers...),
 	}
 }
 
@@ -310,11 +404,7 @@ func (gen *SlugGenerator) WithFinalizer(modifier StringModifierFunc) *SlugGenera
 	}
 }
 
-var defaultGenerator *SlugGenerator
-
-func init() {
-	defaultGenerator = NewDefaultSlugGenerator()
-}
+var defaultGenerator = NewDefaultSlugGenerator()
 
 func GenerateSlug(in string) string {
 	return defaultGenerator.GenerateSlug(in)
