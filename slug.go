@@ -390,6 +390,9 @@ func getDefaultPreProcessorsWithForm(form norm.Form, toLower bool) []StringModif
 	return res
 }
 
+// GetDefaultPreProcessors returns the default list of pre processors, see SlugGenerator for details.
+// The result will contain: IgnoreInvalidUTF8, normalization to NKFC, transforming the string
+// to lowercase codepoints.
 func GetDefaultPreProcessors() []StringModifierFunc {
 	return getDefaultPreProcessorsWithForm(norm.NFKC, true)
 }
@@ -408,6 +411,9 @@ func getDefaultProcessorsWithConfig(replaceBy string, firstActions ...StringModi
 	return res
 }
 
+// GetDefaultProcessors returns th default list of processors, see SlugGenerator for details.
+// The result will contain: Replace spaces by "-", replace dashes and hyphens by "-", keep only
+// the default set of codepoints and drop all others (see ValidSlugRuneReplaceFunc).
 func GetDefaultProcessors() []StringModifierFunc {
 	return getDefaultProcessorsWithConfig("-")
 }
@@ -423,16 +429,56 @@ func getDefaultFinalizersWithConfig(replaceBy rune, truncateLength int) []String
 	return res
 }
 
+// GetDefaultFinalizers returns the default list of finalizers, see SlugGenerator for details.
+// The result will contain: replace multiple occurrences of "-" by a single one, trim leading and tailing "-".
 func GetDefaultFinalizers() []StringModifierFunc {
 	return getDefaultFinalizersWithConfig('-', -1)
 }
 
+// SlugGenerator is the type that actually creates all slugs.
+//
+// The conversion input --> slug is split up into three faces:
+// Preprocessing, processing and postprocessing (PreProcessor, Processor and Fianlizer).
+//
+// The idea behind this is to make it easier to add your own modifiers at "the right moment".
+// The idea is that the string passes through all three phases, each doing something different:
+//
+// The pre processor prepares the string to be actually processed later.
+// This by default includes: Remove invalid UTF-8 codepoints from the string, normalize the string
+// to NKFC (see https://blog.golang.org/normalization) and making the string lower case.
+//
+// The string is then prepared to be actually be processed: Replacements can assume that the string is valid
+// and everything in it is lowercase.
+//
+// The main phase thus is responsible to create a slug form, i.e. use only valid slug codepoints, replace
+// strings etc.
+// By default this processing phase will do the following: Replace all spaces (" ", newline etc.)
+// by "-", replace all dash symbols (for example the UTF-8 ― by "-", they're different codepoints),
+// drop everything that is not a valid slug codepoint.
+//
+// After that the string is finalized and converted to a "normal form".
+// By default this includes that all occurrences of more than one "-" are replaced by a signle
+// "-" and the removal of all leading / trailing "-".
+//
+// There are different ways to modify the slug generator, see the project homepage at
+// https://github.com/FabianWe/goslugify and the examples in Configure.
+//
+// Of course you can also completely write your own generator by just setting all three parts yourself,
+// but then you should know what you're doing.
+//
+// An important note: It is not guaranteed that this order remains consistent over all versions of this package!
+// Probably only more functionality will be added, but I don't make any promises that this doesn't change!
+//
+// As a rule: If you need slugs for example in a database to identify objects store the slug,
+// don't rely on the slug generator to for example compute the same slug again and again for the same
+// input.
 type SlugGenerator struct {
 	PreProcessor StringModifierFunc
 	Processor    StringModifierFunc
 	Finalizer    StringModifierFunc
 }
 
+// GenerateSlug generates a slug by performing all three phases.
 func (gen *SlugGenerator) GenerateSlug(in string) string {
 	in = gen.PreProcessor(in)
 	in = gen.Processor(in)
@@ -440,10 +486,13 @@ func (gen *SlugGenerator) GenerateSlug(in string) string {
 	return in
 }
 
+// Modify is not really required, but as a fact SlugGenerator also implements StringModifier.
 func (gen *SlugGenerator) Modify(in string) string {
 	return gen.GenerateSlug(in)
 }
 
+// NewEmptySlugGenerator without any processing steps, this should only be used if you want
+// to implement your own workflow without any of the defaults.
 func NewEmptySlugGenerator() *SlugGenerator {
 	return &SlugGenerator{
 		PreProcessor: nil,
@@ -452,6 +501,8 @@ func NewEmptySlugGenerator() *SlugGenerator {
 	}
 }
 
+// NewDefaultSlugGenerator returns a slug generator that consists of the components
+// as returned by GetDefaultPreProcessors, GetDefaultProcessors and GetDefaultFinalizers.
 func NewDefaultSlugGenerator() *SlugGenerator {
 	return &SlugGenerator{
 		PreProcessor: ChainStringModifierFuncs(GetDefaultPreProcessors()...),
@@ -460,6 +511,9 @@ func NewDefaultSlugGenerator() *SlugGenerator {
 	}
 }
 
+// WithPreProcessor adds a new pre processor to the generator.
+// Note: If you plan to add a lot of processor it's probably better to append to GetDefaultPreProcessors
+// and then chain all entries yourself.
 func (gen *SlugGenerator) WithPreProcessor(modifier StringModifierFunc) *SlugGenerator {
 	return &SlugGenerator{
 		PreProcessor: ChainStringModifierFuncs(modifier, gen.PreProcessor),
@@ -468,6 +522,9 @@ func (gen *SlugGenerator) WithPreProcessor(modifier StringModifierFunc) *SlugGen
 	}
 }
 
+// WithPreProcessor adds a new processor to the generator.
+// Note: If you plan to add a lot of processor it's probably better to append to GetDefaultProcessors
+// and then chain all entries yourself.
 func (gen *SlugGenerator) WithProcessor(modifier StringModifierFunc) *SlugGenerator {
 	return &SlugGenerator{
 		PreProcessor: gen.PreProcessor,
@@ -476,6 +533,9 @@ func (gen *SlugGenerator) WithProcessor(modifier StringModifierFunc) *SlugGenera
 	}
 }
 
+// WithFinalizer adds a new finalizer to the generator.
+// Note: If you plan to add a lot of finalizers it's probably better to append to GetDefaultFinalizers
+// and then chain all entries yourself.
 func (gen *SlugGenerator) WithFinalizer(modifier StringModifierFunc) *SlugGenerator {
 	return &SlugGenerator{
 		PreProcessor: gen.PreProcessor,
@@ -487,10 +547,48 @@ func (gen *SlugGenerator) WithFinalizer(modifier StringModifierFunc) *SlugGenera
 var defaultConfig = NewSlugConfig()
 var defaultGenerator = defaultConfig.Configure()
 
+// GenerateSlug generates a new slug containing only valid slug codepoints.
+//
+// This returns a slug that should be good enough for most cases, if you want to configure the
+// returned slug, for example set a max length, you can customize a SlugGenerator.
+// See documentation there.
 func GenerateSlug(in string) string {
 	return defaultGenerator.GenerateSlug(in)
 }
 
+// SlugConfig gives an easy way to build a customized slug generator.
+//
+// It allows customization (instead of just using the global GenerateSlug function), but doesn't
+// require a complete setup where you have to define a whole workflow for yourself.
+//
+// For most use cases this customization should be sufficient.
+// Just create a NewSlugConfig (this gives you the same config as the global function uses),
+// set any of the fields on the config and then use Configure to create a SlugGenerator with the given
+// settings.
+//
+// The following fields can be adjusted:
+//
+// TruncateLength: If set to a value > 0 this is the maximal length that the slug is allowed to have,
+// smart truncating is used to truncate the string. If you want more details about truncating have a look at
+// NewTruncateFunc.
+//
+// WordSeparator defines which codepoint should be used to separate words in the string.
+// For example: "foo bar" --> "foo-bar". Also multiple occurrences of this codepoint will be stripped,
+// e.g. "foo--bar" --> "foo-bar". If the string has leading or trailing '-' separators they will be trimmed,
+// e.g. "-foo-bar-" --> "foo-bar".
+// This codepoint will also determine where a word begins / ends for truncating the string
+// (if TruncateLength > 0, again see NewTruncateFunc).
+//
+// Form defines the UTF-8 normal form to use, the default should do in most cases, however
+// see https://blog.golang.org/normalization.
+//
+// ReplaceMaps can be used to add your own custom replacers. They could for example contain
+// language specific replacements. See MergeStringReplaceMaps how multipl maps are merged.
+// This replacement takes place right after the pre processors, so they're th first step after
+// the pre processing.
+//
+// ToLower is by default set to true and the whole string is transformed to all lowercase codepoints
+// in th pre processing phase.
 type SlugConfig struct {
 	TruncateLength int
 	WordSeparator  rune
@@ -499,6 +597,8 @@ type SlugConfig struct {
 	ToLower        bool
 }
 
+// NewSlugConfig returns the default config that is used by the global GenerateSlug function,
+// just change the fields you want to customize and call Configure.
 func NewSlugConfig() *SlugConfig {
 	return &SlugConfig{
 		TruncateLength: -1,
@@ -509,6 +609,7 @@ func NewSlugConfig() *SlugConfig {
 	}
 }
 
+// Configure generats a SlugGenerator from the given config.
 func (config *SlugConfig) Configure() *SlugGenerator {
 	pre := getDefaultPreProcessorsWithForm(config.Form, config.ToLower)
 
@@ -535,8 +636,3 @@ func (config *SlugConfig) Configure() *SlugGenerator {
 
 // TODO is valid function?
 // should be... making this a method of SlugGenerator would be a bit hard...
-
-// TODO should not be modified
-// customize: -, multiple maps, truncate length
-// add lower case bool option
-// add a config type with a to... method?
