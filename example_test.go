@@ -147,3 +147,11 @@ func ExampleSlugConfig_second() {
 	fmt.Println(generator.GenerateSlug("Hello World!!!"))
 	// Output: hello-moon
 }
+
+func ExampleGetLanguageMap() {
+	config := goslugify.NewSlugConfig()
+	config.AddReplaceMap(goslugify.GetLanguageMap("de"))
+	generator := config.Configure()
+	fmt.Println(generator.GenerateSlug("Aragorn & Arwen"))
+	// Output: aragorn-und-arwen
+}
