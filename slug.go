@@ -420,7 +420,7 @@ func getDefaultPreProcessorsWithForm(form norm.Form, toLower bool) []StringModif
 // to lowercase codepoints.
 //
 // Note: There is no guarantee that these processor will always remain the same, it's probable that new ones
-// might be added, even in the same major version (which shouldn't b a problem for most applications).
+// might be added, even in the same major version (which shouldn't be a problem for most applications).
 func GetDefaultPreProcessors() []StringModifierFunc {
 	return getDefaultPreProcessorsWithForm(norm.NFKC, true)
 }
@@ -446,7 +446,7 @@ func getDefaultProcessorsWithConfig(replaceBy string, firstActions ...StringModi
 // (see ValidSlugRuneReplaceFunc).
 //
 // Note: There is no guarantee that these processor will always remain the same, it's probable that new ones
-// might be added, even in the same major version (which shouldn't b a problem for most applications).
+// might be added, even in the same major version (which shouldn't be a problem for most applications).
 func GetDefaultProcessors() []StringModifierFunc {
 	return getDefaultProcessorsWithConfig("-")
 }
@@ -466,7 +466,7 @@ func getDefaultFinalizersWithConfig(replaceBy rune, truncateLength int) []String
 // The result will contain: replace multiple occurrences of "-" by a single one, trim leading and tailing "-".
 //
 // Note: There is no guarantee that these processor will always remain the same, it's probable that new ones
-// might be added, even in the same major version (which shouldn't b a problem for most applications).
+// might be added, even in the same major version (which shouldn't be a problem for most applications).
 func GetDefaultFinalizers() []StringModifierFunc {
 	return getDefaultFinalizersWithConfig('-', -1)
 }

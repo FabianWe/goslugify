@@ -106,6 +106,13 @@ You probably want to look in the code anyway, so you might have a look at [GetDe
 Again: Don't rely on the return value, it is probable that new modifiers will be added! So for example don't assume that the length will always be the same, or the element
 on a specific index is a certain modifier.
 
+## Is a String a Slug?
+See the global function [IsSlug](https://godoc.org/github.com/FabianWe/goslugify#IsSlug) for slugs generated with
+the global `GenerateSlug` function, and [SlugConfig.GetValidator](https://godoc.org/github.com/FabianWe/goslugify#SlugConfig.GetValidator)
+for validating a specific `SlugConfig`.
+There are some remarks in `SlugConfig.GetValidator` which you should read anyway.
+In short: Don't take the result too seriously.
+
 ## Contribute
 As mentioned before new functionality might be added in the same major release and thus the generated slugs in default mode might change.
 So if you for example plan to add emoji support or add a new language you can share it and I will happily add it to the project.
