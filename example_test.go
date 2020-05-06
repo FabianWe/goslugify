@@ -115,3 +115,35 @@ func ExampleNewTrimFunc() {
 	fmt.Println(f("----hello---_"))
 	// Output: hello
 }
+
+func ExampleSlugGenerator() {
+	slugGenerator := goslugify.NewDefaultSlugGenerator()
+	fmt.Println(slugGenerator.GenerateSlug("foo bar -- hello"))
+	// Output: foo-bar-hello
+}
+
+func ExampleGenerateSlug() {
+	fmt.Println(goslugify.GenerateSlug("Hello World!! Isn't this amazing?"))
+	// Output: hello-world-isnt-this-amazing
+}
+
+func ExampleSlugConfig() {
+	config := goslugify.NewSlugConfig()
+	// set the allowed max length to 11
+	config.TruncateLength = 11
+	// don't convert to lower case
+	config.ToLower = false
+	generator := config.Configure()
+	fmt.Println(generator.GenerateSlug("Hello World! Isn't this amazing?"))
+	// Output: Hello-World
+}
+
+func ExampleSlugConfig_second() {
+	config := goslugify.NewSlugConfig()
+	config.AddReplaceMap(map[string]string{
+		"world": "moon",
+	})
+	generator := config.Configure()
+	fmt.Println(generator.GenerateSlug("Hello World!!!"))
+	// Output: hello-moon
+}

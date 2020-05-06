@@ -393,6 +393,9 @@ func getDefaultPreProcessorsWithForm(form norm.Form, toLower bool) []StringModif
 // GetDefaultPreProcessors returns the default list of pre processors, see SlugGenerator for details.
 // The result will contain: IgnoreInvalidUTF8, normalization to NKFC, transforming the string
 // to lowercase codepoints.
+//
+// Note: There is no guarantee that these processor will always remain the same, it's probable that new ones
+// might be added, even in the same major version (which shouldn't b a problem for most applications).
 func GetDefaultPreProcessors() []StringModifierFunc {
 	return getDefaultPreProcessorsWithForm(norm.NFKC, true)
 }
@@ -414,6 +417,9 @@ func getDefaultProcessorsWithConfig(replaceBy string, firstActions ...StringModi
 // GetDefaultProcessors returns th default list of processors, see SlugGenerator for details.
 // The result will contain: Replace spaces by "-", replace dashes and hyphens by "-", keep only
 // the default set of codepoints and drop all others (see ValidSlugRuneReplaceFunc).
+//
+// Note: There is no guarantee that these processor will always remain the same, it's probable that new ones
+// might be added, even in the same major version (which shouldn't b a problem for most applications).
 func GetDefaultProcessors() []StringModifierFunc {
 	return getDefaultProcessorsWithConfig("-")
 }
@@ -431,6 +437,9 @@ func getDefaultFinalizersWithConfig(replaceBy rune, truncateLength int) []String
 
 // GetDefaultFinalizers returns the default list of finalizers, see SlugGenerator for details.
 // The result will contain: replace multiple occurrences of "-" by a single one, trim leading and tailing "-".
+//
+// Note: There is no guarantee that these processor will always remain the same, it's probable that new ones
+// might be added, even in the same major version (which shouldn't b a problem for most applications).
 func GetDefaultFinalizers() []StringModifierFunc {
 	return getDefaultFinalizersWithConfig('-', -1)
 }
@@ -570,7 +579,7 @@ func GenerateSlug(in string) string {
 //
 // TruncateLength: If set to a value > 0 this is the maximal length that the slug is allowed to have,
 // smart truncating is used to truncate the string. If you want more details about truncating have a look at
-// NewTruncateFunc.
+// NewTruncateFunc. Note that this is the number of runes in th string, not the number of bytes.
 //
 // WordSeparator defines which codepoint should be used to separate words in the string.
 // For example: "foo bar" --> "foo-bar". Also multiple occurrences of this codepoint will be stripped,
@@ -609,7 +618,12 @@ func NewSlugConfig() *SlugConfig {
 	}
 }
 
-// Configure generats a SlugGenerator from the given config.
+// AddReplaceMap add a new replace map to the back of the ReplaceMaps list.
+func (config *SlugConfig) AddReplaceMap(m StringReplaceMap) {
+	config.ReplaceMaps = append(config.ReplaceMaps, m)
+}
+
+// Configure creates a SlugGenerator from the given config.
 func (config *SlugConfig) Configure() *SlugGenerator {
 	pre := getDefaultPreProcessorsWithForm(config.Form, config.ToLower)
 
