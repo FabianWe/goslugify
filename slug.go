@@ -220,7 +220,7 @@ func KeepAllFunc(r rune) (bool, string) {
 	return true, string(r)
 }
 
-// TranslateUmlaut translates to umlaut symbols (ö, ä, ü) as well as ß to a string without the umlaut,
+// TranslateUmlaut translates the umlaut symbols (ö, ä, ü) as well as ß to a string without the umlaut,
 // for example 'ö' --> "oe", 'ß' --> "ss".
 func TranslateUmlaut(r rune) (bool, string) {
 	switch r {
@@ -424,6 +424,7 @@ func getDefaultProcessorsWithConfig(replaceBy string, firstActions ...StringModi
 	defaultFunc := RuneHandleFuncToStringModifierFunc(ChainRuneHandleFuncs(
 		NewSpaceReplacerFunc(replaceBy),
 		ReplaceDashAndHyphens,
+		TranslateUmlaut,
 		ValidSlugRuneReplaceFunc,
 	))
 
@@ -432,8 +433,9 @@ func getDefaultProcessorsWithConfig(replaceBy string, firstActions ...StringModi
 }
 
 // GetDefaultProcessors returns th default list of processors, see SlugGenerator for details.
-// The result will contain: Replace spaces by "-", replace dashes and hyphens by "-", keep only
-// the default set of codepoints and drop all others (see ValidSlugRuneReplaceFunc).
+// The result will contain: Replace spaces by "-", replace dashes and hyphens by "-",
+// translate umlauts, finally keep only the default set of codepoints and drop all others
+// (see ValidSlugRuneReplaceFunc).
 //
 // Note: There is no guarantee that these processor will always remain the same, it's probable that new ones
 // might be added, even in the same major version (which shouldn't b a problem for most applications).
@@ -464,7 +466,7 @@ func GetDefaultFinalizers() []StringModifierFunc {
 // SlugGenerator is the type that actually creates all slugs.
 //
 // The conversion input --> slug is split up into three faces:
-// Preprocessing, processing and postprocessing (PreProcessor, Processor and Fianlizer).
+// Preprocessing, processing and postprocessing (PreProcessor, Processor and Finalizer).
 //
 // The idea behind this is to make it easier to add your own modifiers at "the right moment".
 // The idea is that the string passes through all three phases, each doing something different:
@@ -480,10 +482,10 @@ func GetDefaultFinalizers() []StringModifierFunc {
 // strings etc.
 // By default this processing phase will do the following: Replace all spaces (" ", newline etc.)
 // by "-", replace all dash symbols (for example the UTF-8 ― by "-", they're different codepoints),
-// drop everything that is not a valid slug codepoint.
+// translate umlauts like 'ä' --> "ae" or "ß" --> "ss", then drop everything that is not a valid slug codepoint.
 //
 // After that the string is finalized and converted to a "normal form".
-// By default this includes that all occurrences of more than one "-" are replaced by a signle
+// By default this includes that all occurrences of more than one "-" are replaced by a single
 // "-" and the removal of all leading / trailing "-".
 //
 // There are different ways to modify the slug generator, see the project homepage at
@@ -570,18 +572,6 @@ func (gen *SlugGenerator) WithFinalizer(modifier StringModifierFunc) *SlugGenera
 	}
 }
 
-var defaultConfig = NewSlugConfig()
-var defaultGenerator = defaultConfig.Configure()
-
-// GenerateSlug generates a new slug containing only valid slug codepoints.
-//
-// This returns a slug that should be good enough for most cases, if you want to configure the
-// returned slug, for example set a max length, you can customize a SlugGenerator.
-// See documentation there.
-func GenerateSlug(in string) string {
-	return defaultGenerator.GenerateSlug(in)
-}
-
 // SlugConfig gives an easy way to build a customized slug generator.
 //
 // It allows customization (instead of just using the global GenerateSlug function), but doesn't
@@ -609,8 +599,8 @@ func GenerateSlug(in string) string {
 // see https://blog.golang.org/normalization.
 //
 // ReplaceMaps can be used to add your own custom replacers. They could for example contain
-// language specific replacements. See MergeStringReplaceMaps how multipl maps are merged.
-// This replacement takes place right after the pre processors, so they're th first step after
+// language specific replacements. See MergeStringReplaceMaps how multiple maps are merged.
+// This replacement takes place right after the pre processors, so they're the first step after
 // the pre processing.
 //
 // ToLower is by default set to true and the whole string is transformed to all lowercase codepoints
@@ -663,6 +653,18 @@ func (config *SlugConfig) Configure() *SlugGenerator {
 		Processor:    ChainStringModifierFuncs(processors...),
 		Finalizer:    ChainStringModifierFuncs(finalizers...),
 	}
+}
+
+var defaultConfig = NewSlugConfig()
+var defaultGenerator = defaultConfig.Configure()
+
+// GenerateSlug generates a new slug containing only valid slug codepoints.
+//
+// This returns a slug that should be good enough for most cases, if you want to configure the
+// returned slug, for example set a max length, you can customize a SlugGenerator.
+// See documentation there.
+func GenerateSlug(in string) string {
+	return defaultGenerator.GenerateSlug(in)
 }
 
 // TODO is valid function?
