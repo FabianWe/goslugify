@@ -127,6 +127,15 @@ func ExampleGenerateSlug() {
 	// Output: hello-world-isnt-this-amazing
 }
 
+func ExampleIsSlug() {
+	isSlug1 := goslugify.IsSlug("foo-bar")
+	isSlug2 := goslugify.IsSlug( "foo")
+	isSlug3 := goslugify.IsSlug("Foo-bar")
+	isSlug4 := goslugify.IsSlug("-foo-bar")
+	fmt.Println(isSlug1, isSlug2, isSlug3, isSlug4)
+	// Output: true true false false
+}
+
 func ExampleSlugConfig() {
 	config := goslugify.NewSlugConfig()
 	// set the allowed max length to 11

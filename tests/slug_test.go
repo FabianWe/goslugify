@@ -278,3 +278,85 @@ func TestTruncateMore(t *testing.T) {
 			in, expected, got)
 	}
 }
+
+func TestValidateNoBounds(t *testing.T) {
+	config := goslugify.NewSlugConfig()
+	validator := config.GetValidator()
+
+	tests := []struct{
+		in string
+		expected bool
+	}{
+		{"foo", true},
+		{"foo__bar", true},
+		{"-foo-bar", false},
+		{"-foo-", false},
+		{"foo-", false},
+		{"foo--bar-42", false},
+		{"foo-bar-21-42", true},
+		{"", true},
+		{"foo-bar@", false},
+		{"foo-Bar", false},
+		{"-", false},
+		{"Foo", false},
+		{"foo-Bar", false},
+	}
+	for _, tc := range tests {
+		got := validator(tc.in)
+		if got != tc.expected {
+			t.Errorf("expected validate(\"%s\") to be %s, but got %s",
+				tc.in, strconv.FormatBool(tc.expected), strconv.FormatBool(got))
+		}
+	}
+}
+
+func TestValidateWithBounds(t *testing.T) {
+	config := goslugify.NewSlugConfig()
+	config.TruncateLength = 5
+	config.WordSeparator = '_'
+	validator := config.GetValidator()
+	tests := []struct{
+		in string
+		expected bool
+	}{
+		{"foo_", false},
+		{"_foo", false},
+		{"", true},
+		{"foo", true},
+		{"fo_ba", true},
+		{"_", false},
+		{"a_b", true},
+		{"gophers", false},
+		{"fo-ba", true},
+	}
+	for _, tc := range tests {
+		got := validator(tc.in)
+		if got != tc.expected {
+			t.Errorf("expected validate(\"%s\") to be %s, but got %s",
+				tc.in, strconv.FormatBool(tc.expected), strconv.FormatBool(got))
+		}
+	}
+}
+
+func TestValidateWithoutLower(t *testing.T) {
+	config := goslugify.NewSlugConfig()
+	config.ToLower = false
+	validator := config.GetValidator()
+
+	tests := []struct{
+		in string
+		expected bool
+	}{
+		{"foo-bar", true},
+		{"-foo", false},
+		{"Foo", true},
+		{"foo-Bar", true},
+	}
+	for _, tc := range tests {
+		got := validator(tc.in)
+		if got != tc.expected {
+			t.Errorf("expected validate(\"%s\") to be %s, but got %s",
+				tc.in, strconv.FormatBool(tc.expected), strconv.FormatBool(got))
+		}
+	}
+}
