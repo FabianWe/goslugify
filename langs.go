@@ -22,7 +22,7 @@ const (
 // EnglishReplaceDict contains replacers for "@" ("at") and "&" ("and").
 var EnglishReplaceDict = map[string]string{
 	"@": "at",
-	"&": "end",
+	"&": "and",
 }
 
 // GermanReplaceDict contains replacers for "@" ("at") and "&" ("und").

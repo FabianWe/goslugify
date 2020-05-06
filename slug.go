@@ -630,15 +630,15 @@ func (config *SlugConfig) AddReplaceMap(m StringReplaceMap) {
 	config.ReplaceMaps = append(config.ReplaceMaps, m)
 }
 
-// Configure creates a SlugGenerator from the given config.
-func (config *SlugConfig) Configure() *SlugGenerator {
-	pre := getDefaultPreProcessorsWithForm(config.Form, config.ToLower)
+// GetPhases returns the modifiers described by this config.
+// You can use this function if you want to add custom modifiers by your own.
+func (config *SlugConfig) GetPhases() (pre, processors, final []StringModifierFunc) {
+	pre = getDefaultPreProcessorsWithForm(config.Form, config.ToLower)
 
 	// first merge all maps into one
 	replaceMap := MergeStringReplaceMaps(config.ReplaceMaps...)
 	// if there is at least one entry we create a replacer and pass it in getDefaultProcessorsWithConfig
 	// this replacer will substitute all occurrences, not just whole words
-	var processors []StringModifierFunc
 	if len(replaceMap) > 0 {
 		constReplacer := NewConstantReplacerFromMap(replaceMap)
 		processors = getDefaultProcessorsWithConfig(string(config.WordSeparator), ToStringHandleFunc(constReplacer))
@@ -646,7 +646,13 @@ func (config *SlugConfig) Configure() *SlugGenerator {
 		processors = getDefaultProcessorsWithConfig(string(config.WordSeparator))
 	}
 
-	finalizers := getDefaultFinalizersWithConfig(config.WordSeparator, config.TruncateLength)
+	final = getDefaultFinalizersWithConfig(config.WordSeparator, config.TruncateLength)
+	return
+}
+
+// Configure creates a SlugGenerator from the given config.
+func (config *SlugConfig) Configure() *SlugGenerator {
+	pre, processors, finalizers := config.GetPhases()
 
 	return &SlugGenerator{
 		PreProcessor: ChainStringModifierFuncs(pre...),
