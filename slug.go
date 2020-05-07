@@ -357,7 +357,7 @@ func NewReplaceMultiOccurrencesFunc(in rune) StringModifierFunc {
 // As a special case the first word as defined by wordSep might be truncated in the word if it
 // already is too long.
 //
-// maxLength meassures the number of runes in the string, not the number of bytes.
+// maxLength is the number of runes in the string, not the number of bytes.
 //
 // Note: If the string starts with wordSep so may the result, so you might want to trim time string,
 // either before or after.
@@ -399,7 +399,7 @@ func NewTruncateFunc(maxLength int, wordSep string) StringModifierFunc {
 // NewTrimFunc returns a new StringModifierFunc that removes all leading and trailing
 // occurrences of cutset from a string.
 // To be more explicit: Each codepoint in cutset will be removed, see strings.Trim.
-// For example "--foo--" will be transformed to "foo".
+// For example "-+foo-+" will be transformed to "foo" for the cutset "-+".
 func NewTrimFunc(cutset string) StringModifierFunc {
 	return func(in string) string {
 		return strings.Trim(in, cutset)

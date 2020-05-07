@@ -279,6 +279,27 @@ func TestTruncateMore(t *testing.T) {
 	}
 }
 
+func TestNewTrimFunc(t *testing.T) {
+	f := goslugify.NewTrimFunc("-+")
+	tests := []struct {
+		in       string
+		expected string
+	}{
+		{"foo", "foo"},
+		{"-foo", "foo"},
+		{"foo-", "foo"},
+		{"-+foo+-", "foo"},
+		{"-foo-bar+", "foo-bar"},
+	}
+	for _, tc := range tests {
+		got := f(tc.in)
+		if got != tc.expected {
+			t.Errorf("expected trim(\"-+\", \"%s\") to be \"%s\", but got \"%s\"",
+				tc.in, tc.expected, got)
+		}
+	}
+}
+
 func TestValidateNoBounds(t *testing.T) {
 	config := goslugify.NewSlugConfig()
 	validator := config.GetValidator()

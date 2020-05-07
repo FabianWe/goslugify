@@ -40,13 +40,11 @@ func init() {
 
 // AddLanguageMap adds a new language to the global language map store.
 // This store can be used for language specific replacements.
-//
-// Supported languages right now are "en" (English) and "de" (German).
 func AddLanguageMap(language string, m StringReplaceMap) {
 	languageMaps[language] = m
 }
 
-// GetLanguageMap returns a StringReplaceMap for a given list of langugages.
+// GetLanguageMap returns a StringReplaceMap for a given list of languages.
 // All maps for the specific languages are merged with MergeStringReplaceMaps.
 // If a language doesn't exist the entry will be ignored.
 //
