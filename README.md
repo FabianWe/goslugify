@@ -122,5 +122,8 @@ Just contact me, via [E-Mail](mailto:fabianwen@posteo.eu) or create a Pull Reque
 * Add support for more languages
 * Add support for emojis
 
+## Version History
+* v1.0.0 on May 7th, 2020 (current)
+
 ## License
 Apache License, Version 2.0. See [LICENSE](LICENSE) file.
