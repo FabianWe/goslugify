@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package goslugify implements a slug customizable slug generator written in Go.
+// Package goslugify implements a customizable slug generator written in Go.
 //
 // You can either use the global function GenerateSlug or create a customized SlugGenerator.
 // See the project homepage at https://github.com/FabianWe/goslugify for more details.
